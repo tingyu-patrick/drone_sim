@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# 讓「進度數字自動更新」這件事真正自動——每次 git commit 前，
+# 自動重算 README.md 的進度追蹤表，並把更新後的版本一併加進這次 commit。
+#
+# 啟用方式（每個 clone 下來的人只需要設定一次）：
+#   git config core.hooksPath scripts/githooks
+#
+# 之後你只要手動把某一關的 `- [ ]` 改成 `- [x]`，正常 `git commit`，
+# 這支 hook 會在 commit 完成前自動幫你把章節標題和總進度數字算對。
+
+set -e
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    PY=python
+fi
+
+"$PY" "$REPO_ROOT/scripts/update_progress.py" "$REPO_ROOT/README.md"
+git add "$REPO_ROOT/README.md"
