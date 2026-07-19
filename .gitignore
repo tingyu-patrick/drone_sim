@@ -1,0 +1,33 @@
+# ---- CMake build 輸出 ----
+build/
+build*/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+_deps/
+
+# ---- 編譯產物 ----
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.a
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.exp
+
+# ---- VSCode ----
+.vscode/*
+
+# ---- 暫時性的資料/實驗輸出 ----
+# 第 0.3 關開始會產生 CSV + 畫圖，但很多挑戰（如 2.5）明確要求把圖留檔當作品證據，
+# 所以不整批忽略 *.csv / *.png，只忽略明確標記為暫存的資料夾：
+scratch/
+tmp/
