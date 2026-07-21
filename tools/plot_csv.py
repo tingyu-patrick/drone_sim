@@ -19,7 +19,7 @@ def read_csv(path):
 
 
 def main():
-    csv_path = sys.argv[1] if len(sys.argv) > 1 else "output//drone_data.csv"
+    csv_path = sys.argv[1] if len(sys.argv) > 1 else "output//particle_simulation.csv"
     out_path = sys.argv[2] if len(sys.argv) > 2 else "output//drone_plot.png"
 
     header, columns = read_csv(csv_path)
