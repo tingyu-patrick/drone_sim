@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../math/vec2.hpp"
-#include "../math/RK4.hpp"
 
 struct Particle {
     vec2 position;
@@ -22,22 +21,22 @@ inline Particle simulate_free_fall(vec2 initial_position,
                                     int steps) {
     Particle p{initial_position, initial_velocity};
     for (int i = 0; i < steps; ++i) {
-        // step_particle(p, g, dt);
-        vec2 state(p.position.y(), p.velocity.y());
-        auto f = [g](double t, vec2 state) {
-            double position = state.x();
-            double velocity = state.y();
-            double dposition_dt = velocity;
-            double dvelocity_dt = g;
-            return vec2(dposition_dt, dvelocity_dt);
-        };
+        step_particle(p, g, dt);
+        // vec2 state(p.position.y(), p.velocity.y());
+        // auto f = [g](double t, vec2 state) {
+        //     double position = state.x();
+        //     double velocity = state.y();
+        //     double dposition_dt = velocity;
+        //     double dvelocity_dt = g;
+        //     return vec2(dposition_dt, dvelocity_dt);
+        // };
 
-        vec2 new_state = integrate(f, state, 0.0, dt);
-        p.position.set_y(new_state.x());
-        p.velocity.set_y(new_state.y());
+        // vec2 new_state = integrate(f, state, 0.0, dt);
+        // p.position.set_y(new_state.x());
+        // p.velocity.set_y(new_state.y());
 
-        // std::cout << "Step " << i << ": Position = (" << p.position.x() << ", " << p.position.y() << "), "
-        //      << "Velocity = (" << p.velocity.x() << ", " << p.velocity.y() << ")" << std::endl;
+        // // std::cout << "Step " << i << ": Position = (" << p.position.x() << ", " << p.position.y() << "), "
+        // //      << "Velocity = (" << p.velocity.x() << ", " << p.velocity.y() << ")" << std::endl;
     }
     return p;
 }
