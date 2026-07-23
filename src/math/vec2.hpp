@@ -75,6 +75,16 @@ public:
         return *this;
     }
 
+    vec2& rotate(double angle_rad) {
+        const double cos_theta = std::cos(angle_rad);
+        const double sin_theta = std::sin(angle_rad);
+        const double new_x = x_ * cos_theta - y_ * sin_theta;
+        const double new_y = x_ * sin_theta + y_ * cos_theta;
+        x_ = new_x;
+        y_ = new_y;
+        return *this;
+    }
+
 private:
     double x_;
     double y_;

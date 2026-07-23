@@ -5,6 +5,8 @@
 #include "../src/physics/state.hpp"
 #include "../src/math/RK4.hpp"
 
+const double PI = std::acos(-1.0);
+
 TEST_CASE("addition works", "[basic]") {
     REQUIRE(1 + 1 == 2);
 }
@@ -254,4 +256,19 @@ TEST_CASE("with zero torque, angular velocity stays constant and angle grows lin
     const double t = steps * dt;
     const double theta_analytical = initial_omega * t;
     REQUIRE(std::abs(state.angle - theta_analytical) < 1e-6);
+}
+
+TEST_CASE("let vector rotate", "[vec2][rotation]"){
+    vec2 v(1.0, 0.0);
+    v.rotate(PI / 2); // 旋轉 90 度
+    REQUIRE(std::abs(v.x()) < 1e-6);
+    REQUIRE(std::abs(v.y() - 1.0) < 1e-6);
+
+    v.rotate(-PI / 2); // 再旋轉 -90 度回到原位
+    REQUIRE(std::abs(v.x() - 1.0) < 1e-6);
+    REQUIRE(std::abs(v.y()) < 1e-6);
+
+    v.rotate(PI); // 旋轉 180 度
+    REQUIRE(std::abs(v.x() + 1.0) < 1e-6);
+    REQUIRE(std::abs(v.y()) < 1e-6);
 }

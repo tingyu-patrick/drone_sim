@@ -9,11 +9,13 @@
 
 void run_free_fall_comparison();
 void run_rotational_dynamics_comparison();
+void run_two_motor();
 
 int main() {
 
-    run_free_fall_comparison();
-    run_rotational_dynamics_comparison();
+    // run_free_fall_comparison();
+    // run_rotational_dynamics_comparison();
+    run_two_motor();
     return 0;
 }
 
@@ -98,4 +100,39 @@ void run_rotational_dynamics_comparison() {
     }
  
     std::cout << "wrote output/rotational_dynamics_rk4.csv\n";
+}
+
+void run_two_motor() {
+    // 這裡可以加入兩個馬達的模擬，使用 RK4 積分器來計算位置、速度、角度和角速度的變化。
+    // 例如，假設有兩個馬達施加不同的力矩，可以定義一個新的 derivative 函式來描述系統的動態。
+
+    const double L = 2.0; // 馬達與中心點的距離
+    const vec2 f_left(0.0, 10.2); // 左馬達的力
+    const vec2 f_right(0.0, 10.0); // 右馬達的力
+    const double I = 2.0; // 假設的轉動慣量
+    const double mass = 2.0; // 假設的質量
+    const double g = -9.8; // 重力加速度
+    const vec2 initial_position(0.0, 0.0);
+    const vec2 initial_velocity(0.0, 0.0);
+    const double initial_angle = 0.0;
+    const double initial_omega = 0.0; // 初始角速度
+    const double total_time = 10.0;
+
+    const double torque = (f_right.y() - f_left.y()) * L; // 力矩 τ = (f_right - f_left) * L
+
+    const auto rotational_derivative = [g, I, mass, torque, f_left, f_right](double t, State s) -> State {
+        // (位置的變化率, 速度的變化率, 角度的變化率, 角速度的變化率)
+        vec2 acceleration = vec2(0.0, g) + (f_right + f_left).rotate(s.angle) / mass; // 垂直方向的加速度
+        return State{s.velocity, acceleration, s.omega, torque / I};
+    };
+
+    CSVLogger logger("output/two_motor_different_long_time.csv",
+                      {"time", "x", "y", "angle"});
+
+    State state{initial_position, initial_velocity, initial_angle, initial_omega};
+    for (double t = 0; t < total_time; t += 0.01) {
+        state = integrate(rotational_derivative, state, t, 0.01);
+        logger.log({t, state.position.x(), state.position.y(), state.angle});
+    }
+
 }
