@@ -10,7 +10,7 @@ int main() {
     const double g = -9.8;
     const double total_time = 3.0;
     const vec2 initial_position(0.0, 0.0);
-    const vec2 initial_velocity(1.0, 0.0);
+    const vec2 initial_velocity(0.0, 0.0);
 
     // 從粗到細，故意跨好幾個數量級，log-log 圖才看得出斜率。
     const std::vector<double> dts = {0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001};
