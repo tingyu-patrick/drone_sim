@@ -4,6 +4,7 @@
 #include "../src/math/vec2.hpp"
 #include "../src/physics/state.hpp"
 #include "../src/math/RK4.hpp"
+#include "../src/math/PIDControler.hpp"
 
 const double PI = std::acos(-1.0);
 
@@ -271,4 +272,104 @@ TEST_CASE("let vector rotate", "[vec2][rotation]"){
     v.rotate(PI); // 旋轉 180 度
     REQUIRE(std::abs(v.x() + 1.0) < 1e-6);
     REQUIRE(std::abs(v.y()) < 1e-6);
+}
+// ==================================================================
+// 挑戰 2.1：PID 積木
+//
+// PIDController 只吃 (目標值, 當前值, dt)，吐控制輸出；內部封裝
+// 積分累積值（integral_）與前一次誤差（previous_error_）。對應驗收
+// 條件的三組核心測試：
+//   1. 純 P：輸出 = Kp × 誤差。
+//   2. 純 I：積分項隨恆定誤差線性累積。
+//   3. 純 D：對階躍誤差的反應（含第一次呼叫的 derivative kick）。
+// 另外補上 reset() 的黑盒驗證，以及三項合一的整合測試。
+// ==================================================================
+
+TEST_CASE("pure P control: output equals Kp times the current error", "[pid]") {
+    PIDController pid(2.0, 0.0, 0.0);  // 只開 P
+
+    const double output = pid.update(/*expect=*/10.0, /*actual=*/4.0, /*dt=*/0.1);
+    REQUIRE(std::abs(output - 2.0 * 6.0) < 1e-9);
+}
+
+TEST_CASE("pure P control tracks error every call with no memory across calls", "[pid]") {
+    PIDController pid(3.0, 0.0, 0.0);
+
+    REQUIRE(std::abs(pid.update(10.0, 0.0, 0.1) - 3.0 * 10.0) < 1e-9);
+    // 誤差變小，純 P 應該立刻跟著變小——不會被前一次呼叫殘留影響。
+    REQUIRE(std::abs(pid.update(10.0, 8.0, 0.1) - 3.0 * 2.0) < 1e-9);
+    REQUIRE(std::abs(pid.update(10.0, 10.0, 0.1) - 0.0) < 1e-9);
+}
+
+TEST_CASE("pure I control accumulates the integral linearly under constant error", "[pid]") {
+    PIDController pid(0.0, 2.0, 0.0);  // 只開 I
+    const double error = 5.0;          // expect - actual 全程固定
+    const double dt = 0.1;
+
+    for (int step = 1; step <= 5; ++step) {
+        const double output = pid.update(error, 0.0, dt);
+        const double expected_integral = error * dt * step;  // 恆定誤差 → 積分項對 t 線性成長
+        REQUIRE(std::abs(output - 2.0 * expected_integral) < 1e-9);
+    }
+}
+
+TEST_CASE("pure D control reacts to a step error then settles once the error stops changing", "[pid]") {
+    PIDController pid(0.0, 0.0, 4.0);  // 只開 D
+    const double dt = 0.1;
+
+    // 第一次呼叫：誤差從 0（初始 previous_error_）階躍到 5，
+    // derivative = (5 - 0) / dt——這是刻意留著的 derivative kick（見 2.1 提示二）。
+    const double first_output = pid.update(5.0, 0.0, dt);
+    REQUIRE(std::abs(first_output - 4.0 * (5.0 / dt)) < 1e-9);
+
+    // 誤差維持不變 → 誤差變化率為 0 → D 輸出應該歸零。
+    const double second_output = pid.update(5.0, 0.0, dt);
+    REQUIRE(std::abs(second_output - 0.0) < 1e-9);
+
+    // 誤差再次階躍（縮小 2）→ derivative = (3 - 5) / dt = -2 / dt。
+    const double third_output = pid.update(3.0, 0.0, dt);
+    REQUIRE(std::abs(third_output - 4.0 * (-2.0 / dt)) < 1e-9);
+}
+
+TEST_CASE("reset() clears integral and previous error back to a fresh controller's state", "[pid]") {
+    PIDController pid(1.0, 1.0, 1.0);
+
+    // 先跑幾步，讓 integral_ / previous_error_ 都累積出不為零的值。
+    pid.update(10.0, 0.0, 0.1);
+    pid.update(10.0, 2.0, 0.1);
+    pid.update(10.0, 5.0, 0.1);
+
+    pid.reset();
+
+    PIDController fresh(1.0, 1.0, 1.0);
+    // reset 過的 pid 和全新建構的 fresh，面對同一組輸入應該給出一模一樣的輸出——
+    // 這是從外部黑盒驗證 private 狀態確實被清空的唯一方式。
+    const double after_reset = pid.update(10.0, 3.0, 0.1);
+    const double from_fresh = fresh.update(10.0, 3.0, 0.1);
+    REQUIRE(std::abs(after_reset - from_fresh) < 1e-9);
+}
+
+TEST_CASE("full PID combines P + I + D and matches a hand-computed sequence", "[pid]") {
+    PIDController pid(1.0, 0.5, 0.2);
+    const double dt = 0.1;
+
+    // 手算對照：error = expect - actual；integral 逐步累加 error*dt；
+    // derivative = (error - previous_error) / dt。跟 PIDController::update 的
+    // 實作逐行對應，用來抓「合起來三項有沒有互相干擾」這種整合層級的 bug。
+    struct Step { double expect; double actual; };
+    const Step steps[] = {{10.0, 0.0}, {10.0, 4.0}, {10.0, 7.0}};
+
+    double integral = 0.0;
+    double previous_error = 0.0;
+
+    for (const auto& step : steps) {
+        const double error = step.expect - step.actual;
+        integral += error * dt;
+        const double derivative = (error - previous_error) / dt;
+        const double expected_output = 1.0 * error + 0.5 * integral + 0.2 * derivative;
+        previous_error = error;
+
+        const double actual_output = pid.update(step.expect, step.actual, dt);
+        REQUIRE(std::abs(actual_output - expected_output) < 1e-9);
+    }
 }
